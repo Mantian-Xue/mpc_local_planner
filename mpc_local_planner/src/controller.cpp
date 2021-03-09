@@ -38,6 +38,7 @@
 #include <mpc_local_planner/optimal_control/quadratic_cost_se2.h>
 #include <mpc_local_planner/optimal_control/stage_inequality_se2.h>
 #include <mpc_local_planner/systems/kinematic_bicycle_model.h>
+#include <mpc_local_planner/systems/kinematic_bicycle_model_steering_delay.h>
 #include <mpc_local_planner/systems/simple_car.h>
 #include <mpc_local_planner/systems/unicycle_robot.h>
 #include <mpc_local_planner/utils/time_series_se2.h>
@@ -369,6 +370,17 @@ RobotDynamicsInterface::Ptr Controller::configureRobotDynamics(const ros::NodeHa
         nh.param("robot/kinematic_bicycle_vel_input/length_front", length_front, length_front);
         return std::make_shared<KinematicBicycleModelVelocityInput>(length_rear, length_front);
     }
+    else if (_robot_type == "kinematic_bicycle_steering_delay")
+    {
+        double length_rear = 1.0;
+        nh.param("robot/kinematic_bicycle_steering_delay/length_rear", length_rear, length_rear);
+        double length_front = 1.0;
+        nh.param("robot/kinematic_bicycle_steering_delay/length_front", length_front, length_front);
+        // steering delay time constant
+        double tau = 0.7; 
+        nh.param("robot/kinematic_bicycle_steering_delay/tau", tau, tau);
+        return std::make_shared<KinematicBicycleModelSteeringDelay>(length_rear, length_front,tau);
+    }
     else
     {
         ROS_ERROR_STREAM("Unknown robot type '" << _robot_type << "' specified.");
@@ -527,6 +539,22 @@ corbo::StructuredOptimalControlProblem::Ptr Controller::configureOcp(const ros::
         ocp->setControlBounds(Eigen::Vector2d(-max_vel_x_backwards, -max_steering_angle), Eigen::Vector2d(max_vel_x, max_steering_angle));
     }
     else if (_robot_type == "kinematic_bicycle_vel_input")
+    {
+        double max_vel_x = 0.4;
+        nh.param("robot/kinematic_bicycle_vel_input/max_vel_x", max_vel_x, max_vel_x);
+        double max_vel_x_backwards = 0.2;
+        nh.param("robot/kinematic_bicycle_vel_input/max_vel_x_backwards", max_vel_x_backwards, max_vel_x_backwards);
+        if (max_vel_x_backwards < 0)
+        {
+            ROS_WARN("max_vel_x_backwards must be >= 0");
+            max_vel_x_backwards *= -1;
+        }
+        double max_steering_angle = 1.5;
+        nh.param("robot/kinematic_bicycle_vel_input/max_steering_angle", max_steering_angle, max_steering_angle);
+
+        ocp->setControlBounds(Eigen::Vector2d(-max_vel_x_backwards, -max_steering_angle), Eigen::Vector2d(max_vel_x, max_steering_angle));
+    }
+    else if (_robot_type == "kinematic_bicycle_steering_delay")
     {
         double max_vel_x = 0.4;
         nh.param("robot/kinematic_bicycle_vel_input/max_vel_x", max_vel_x, max_vel_x);
@@ -785,6 +813,27 @@ corbo::StructuredOptimalControlProblem::Ptr Controller::configureOcp(const ros::
         }
         double max_steering_rate = 0.0;
         nh.param("robot/kinematic_bicycle_vel_input/max_steering_rate", max_steering_rate, max_steering_rate);
+
+        if (acc_lim_x <= 0) acc_lim_x = corbo::CORBO_INF_DBL;
+        if (dec_lim_x <= 0) dec_lim_x = corbo::CORBO_INF_DBL;
+        if (max_steering_rate <= 0) max_steering_rate = corbo::CORBO_INF_DBL;
+        Eigen::Vector2d ud_lb(-dec_lim_x, -max_steering_rate);
+        Eigen::Vector2d ud_ub(acc_lim_x, max_steering_rate);
+        _inequality_constraint->setControlDeviationBounds(ud_lb, ud_ub);
+    }
+    else if (_robot_type == "kinematic_bicycle_steering_delay")
+    {
+        double acc_lim_x = 0.0;
+        nh.param("robot/kinematic_bicycle_steering_delay/acc_lim_x", acc_lim_x, acc_lim_x);
+        double dec_lim_x = 0.0;
+        nh.param("robot/kinematic_bicycle_steering_delay/dec_lim_x", dec_lim_x, dec_lim_x);
+        if (dec_lim_x < 0)
+        {
+            ROS_WARN("dec_lim_x must be >= 0");
+            dec_lim_x *= -1;
+        }
+        double max_steering_rate = 0.0;
+        nh.param("robot/kinematic_bicycle_steering_delay/max_steering_rate", max_steering_rate, max_steering_rate);
 
         if (acc_lim_x <= 0) acc_lim_x = corbo::CORBO_INF_DBL;
         if (dec_lim_x <= 0) dec_lim_x = corbo::CORBO_INF_DBL;

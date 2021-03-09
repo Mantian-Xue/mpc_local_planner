@@ -4,13 +4,15 @@ MpcLocalPlannerROS:
     
    ## Robot settings
   robot:
-    type: "simple_car"
-    simple_car:
-      wheelbase: 0.4
+    type: "kinematic_bicycle_steering_delay"
+    kinematic_bicycle_vel_input:
+      length_rear: 0.2
+      length_front: 0.2
+      tau: 0.3
       front_wheel_driving: False
       max_vel_x: 0.4
       max_vel_x_backwards: 0.2
-      max_steering_angle: 1.4
+      max_steering_angle: 1.2
       acc_lim_x: 0.5 # deactive bounds with zero
       dec_lim_x: 0.5 # deactive bounds with zero
       max_steering_rate: 0.5 # deactive bounds with zero
@@ -37,20 +39,21 @@ MpcLocalPlannerROS:
     cutoff_dist: 2.5 
     include_costmap_obstacles: True
     costmap_obstacles_behind_robot_dist: 1.0
-    collision_check_no_poses: 5
+    collision_check_no_poses: 3
     
 
   ## Planning grid 
   grid:
     type: "fd_grid"
     grid_size_ref: 20
-    dt_ref: 0.3
-    xf_fixed: [True, True, True]
+    dt_ref: 0.5
+    xf_fixed: [True, True, True, False]
+    #xf_fixed: [False, False, False]
     warm_start: True
     collocation_method: "forward_differences"
     cost_integration_method: "left_sum"
     variable_grid:
-      enable: True  
+      enable: False
       min_dt: 0.0;
       max_dt: 10.0;
       grid_adaptation:
@@ -68,19 +71,37 @@ MpcLocalPlannerROS:
     terminal_constraint:
       type: "none"
 
+  planning:
+    objective:
+      type: "quadratic_form" # minimum_time requires grid/variable_grid/enable=True and grid/xf_fixed set properly
+      quadratic_form:
+        state_weights: [2.0, 2.0, 2.25,0.5]
+        control_weights: [0.1, 20.05]
+        integral_form: False
+    terminal_cost:
+      type: "quadratic" # can be "none"
+      quadratic:
+        final_state_weights: [10.0, 10.0, 10.5,1.0]
+    terminal_constraint:
+      type: "none" # can be "none"
+      l2_ball:
+        weight_matrix: [5.0, 5.0, 10.0]
+        radius: 0.3
+
+
   ## Controller options
   controller:
     outer_ocp_iterations: 1
     xy_goal_tolerance: 0.2
     yaw_goal_tolerance: 0.1
-    global_plan_overwrite_orientation: True
+    global_plan_overwrite_orientation: False
     global_plan_prune_distance: 1.0
     allow_init_with_backward_motion: True
-    max_global_plan_lookahead_dist: 1.5 
+    max_global_plan_lookahead_dist: 3.5 
     force_reinit_new_goal_dist: 1.0
     force_reinit_new_goal_angular: 1.57
     prefer_x_feedback: False
-    publish_ocp_results: False
+    publish_ocp_results: True
     
   ## Solver settings
   solver:
