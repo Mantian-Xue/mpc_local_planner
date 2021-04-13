@@ -141,6 +141,26 @@ class SimpleCarFrontWheelDrivingModel : public SimpleCarModel
     }
 };
 
+class SimpleCarSteeringDelayModel : public SimpleCarModel 
+{
+    public:
+        SimpleCarSteeringDelayModel() = default;
+        SimpleCarSteeringDelayModel(double wheelbase, double tau) : SimpleCarModel(wheelbase), _tau(tau){}
+        int getStateDimension() const override {return 4;}
+
+        void dynamics(const Eigen::Ref<const StateVector>& x, const Eigen::Ref<const ControlVector>& u, Eigen::Ref<StateVector> f) const override
+        {
+            f[0] = u[0] * std::cos(x[2]);
+            f[1] = u[0] * std::sin(x[2]);
+            f[2] = u[0] * std::tan(x[3]) / _wheelbase;
+            f[3] = (u[1] - x[3]) / _tau;
+        }
+
+    protected:
+        double _tau = 1.0 ;
+
+};
+
 }  // namespace mpc_local_planner
 
 #endif  // SYSTEMS_SIMPLE_CAR_H_

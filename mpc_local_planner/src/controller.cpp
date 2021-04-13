@@ -285,6 +285,7 @@ corbo::DiscretizationGridInterface::Ptr Controller::configureGrid(const ros::Nod
         {
             ROS_ERROR_STREAM("Array size of `xf_fixed` does not match robot state dimension(): " << xf_fixed.size()
                                                                                                  << " != " << _dynamics->getStateDimension());
+            ROS_ERROR_STREAM("Simple car delay model needs 4 states [x,y,theta,steering]!");
             return {};
         }
         Eigen::Matrix<bool, -1, 1> xf_fixed_eigen(xf_fixed.size());  // we cannot use Eigen::Map as vector<bool> does not provide raw access
@@ -356,8 +357,19 @@ RobotDynamicsInterface::Ptr Controller::configureRobotDynamics(const ros::NodeHa
         nh.param("robot/simple_car/wheelbase", wheelbase, wheelbase);
         bool front_wheel_driving = false;
         nh.param("robot/simple_car/front_wheel_driving", front_wheel_driving, front_wheel_driving);
+
+        bool steering_delay = true;
+        double tau = 0.8;
+        nh.param("robot/simple_car/tau", tau, tau);
+        nh.param("robot/simple_car/steering_delay",steering_delay, steering_delay);
+
         if (front_wheel_driving)
             return std::make_shared<SimpleCarFrontWheelDrivingModel>(wheelbase);
+        else if (steering_delay)
+        {
+            ROS_INFO("delay model is used!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); 
+            return std::make_shared<SimpleCarSteeringDelayModel>(wheelbase,tau);
+        }
         else
             return std::make_shared<SimpleCarModel>(wheelbase);
     }

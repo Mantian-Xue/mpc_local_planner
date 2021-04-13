@@ -9,11 +9,11 @@ MpcLocalPlannerROS:
       wheelbase: 0.4
       front_wheel_driving: False
       max_vel_x: 0.4
-      max_vel_x_backwards: 0.2
+      max_vel_x_backwards: 0.4
       max_steering_angle: 1.4
-      acc_lim_x: 0.5 # deactive bounds with zero
+      acc_lim_x: 0.1 # deactive bounds with zero
       dec_lim_x: 0.5 # deactive bounds with zero
-      max_steering_rate: 0.5 # deactive bounds with zero
+      max_steering_rate: 0.1 # deactive bounds with zero
 
   ## Footprint model for collision avoidance
   footprint_model: # types: "point", "circular", "two_circles", "line", "polygon"
